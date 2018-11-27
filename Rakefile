@@ -9,7 +9,7 @@ require 'resque/tasks'
 require_relative 'app.rb'
 require 'pry'
 
-desc 'list current shopify customers'
-task :list_customers do |t|
-    ShopifyClient::Customer.new.print_list
+desc 'Pull shopify customers in db'
+task :shopify_customer_pull, [:args] do |t, args|
+  ShopifyClient::Customer.new.handle_shopify_customers(*args)
 end
