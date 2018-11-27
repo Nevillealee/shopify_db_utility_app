@@ -1,0 +1,14 @@
+development:
+  encoding: unicode
+  pool: 2
+  url: <%= ENV['DATABASE_URL'] %>
+
+test:
+  encoding: unicode
+  pool: 2
+  url: <%= ENV['TEST_DB_URL'] %>
+
+production:
+  encoding: unicode
+  pool: 2
+  url: <%= ENV['DATABASE_URL'] %>
