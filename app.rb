@@ -12,7 +12,6 @@ require 'pry'
 module ShopifyClient
   class Customer
     def initialize
-      # Dotenv.load
       # TODO(Neville) change STDOUT to 'logs/customer_pull_resque.log' for production
       @logger = Logger.new(STDOUT, progname: 'ShopifyClient', level: 'INFO')
       key = ENV['SHOPIFY_API_KEY']
@@ -100,7 +99,7 @@ module ShopifyClient
           customer_obj.save!
           cust_tag.tags = my_tags.join(",")
           @logger.info "changes made, tags after: #{customer_obj.tags.inspect}"
-          
+
           cust_tag.is_processed = true
           cust_tag.save!
           @logger.info "#{shopify_id} is_processed value now = #{cust_tag.is_processed}"
