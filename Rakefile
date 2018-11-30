@@ -15,13 +15,13 @@ namespace :shopify do
     ShopifyClient::Customer.new.handle_shopify_customers(*args)
   end
 
-  desc 'Set up shopify customer tag table'
-  task :tag_table_setup do
-    ShopifyClient::Customer.new.setup_tag_table
+  desc 'Set up tag table [prospect_recurring] or [skip_reset]'
+  task :init_tag_tbl, [:args] do |t, args|
+    ShopifyClient::Customer.new.init_tag_tbl(*args)
   end
 
-  desc 'Remove false tag from option arg'
+  desc 'Remove [option] tag from customers'
   task :remove_tag, [:args] do |t, args|
-    ShopifyClient::Customer.new.remove_false_tag(*args)
+    ShopifyClient::Customer.new.remove_tags(*args)
   end
 end

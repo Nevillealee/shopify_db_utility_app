@@ -470,7 +470,7 @@ ActiveRecord::Schema.define(version: 2018_11_27_225408) do
     t.index ["subscription_id"], name: "index_skip_reasons_on_subscription_id"
   end
 
-  create_table "skippable_products", force: :cascade do |t|
+  create_table "switchable_products", force: :cascade do |t|
     t.string "product_title"
     t.string "product_id"
     t.boolean "threepk", default: false

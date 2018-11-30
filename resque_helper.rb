@@ -122,7 +122,6 @@ module ResqueHelper
     my_insert = "insert into shopify_customers (accepts_marketing, addresses, created_at, default_address, email, first_name, customer_id, last_name, last_order_id, last_order_name, metafield, multipass_identifier, note, orders_count, phone, state, tags, tax_exempt, total_spent, updated_at, verified_email) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)"
     my_conn.prepare('statement1', "#{my_insert}")
 
-    #Delete all customers from day before yesterday
     my_temp_update = "update shopify_customers set accepts_marketing = $1, addresses = $2, created_at = $3, default_address = $4, email = $5, first_name = $6, customer_id = $7, last_name = $8, last_order_id = $9, last_order_name = $10, metafield = $11, multipass_identifier = $12, note = $13, orders_count = $14, phone = $15, state = $16, tags = $17, tax_exempt = $18, total_spent = $19, updated_at = $20, verified_email = $21  where customer_id = $7"
     my_conn.prepare('statement2', "#{my_temp_update}")
 

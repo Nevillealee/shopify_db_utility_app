@@ -8,7 +8,7 @@ require "sinatra/activerecord"
 require_relative 'resque_helper'
 Dir["./models/*.rb"].each {|file| require file }
 require 'pry'
-
+# TODO(Neville Lee) add api limit rescue statements
 module ShopifyClient
   class Customer
     def initialize
@@ -45,33 +45,49 @@ module ShopifyClient
       end
     end
 
-    def setup_tag_table
+    def init_tag_tbl(option)
+      # option = skip_set or prospect_recurring
       @logger.info "Doing shopify customer tag table setup"
-      bad_tags = ShopifyCustomer.find_by_sql(
-        "select * from shopify_customers where tags like
-        '%prospect%' and tags like '%recurring_subscription%';"
-        );
+      @logger.info "option recieved: #{option.inspect}"
+      if option == 'prospect_recurring'
+        @cust_tags = ShopifyCustomer.find_by_sql(
+          "select * from shopify_customers where tags like
+          '%prospect%' and tags like '%recurring_subscription%';"
+          );
+      elsif option == 'skip_reset'
+        @cust_tags = ShopifyCustomer.find_by_sql(
+          "select * from shopify_customers where tags like
+          '%skipped%';"
+          );
+      else
+        raises ArgumentError
+      end
+      update_tag_tbl(@cust_tags)
+    end
+
+    def update_tag_tbl(bad_tags)
       if (bad_tags.size > 0)
         @logger.info "#{bad_tags.size} incorrectly tagged customers found in db"
-
         bad_tags.each do |query_cust|
           myid = query_cust.customer_id
-        ShopifyCustomerTagFix.find_or_create_by(customer_id: myid) do |tag_record|
-            tag_record.email = query_cust.email
-            tag_record.first_name = query_cust.first_name
-            tag_record.last_name = query_cust.last_name
-            tag_record.tags = query_cust.tags
-            tag_record.is_processed = false
-          end
+      ShopifyCustomerTagFix.find_or_create_by(customer_id: myid)
+      .update_attributes({
+            email: query_cust.email,
+            first_name: query_cust.first_name,
+            last_name: query_cust.last_name,
+            tags: query_cust.tags,
+            is_processed: false,
+          })
           @logger.info "shopify_id: #{myid} processed"
         end
       end
     end
 
-    def remove_false_tag(option)
+    def remove_tags(option)
+      @logger.info "tag to be removed from customers in shopify_customer_tag_fixes table: #{option}"
       tag_fixes = ShopifyCustomerTagFix.where(is_processed: false)
-      tag_fixes.each do |cust_tag|
-        shopify_id = cust_tag.customer_id
+      tag_fixes.each do |tag_tbl_cust|
+        shopify_id = tag_tbl_cust.customer_id
         ShopifyAPI::Base.site = @shopify_base_site
         @logger.info "Handling shopify_customer_id: #{shopify_id}"
 
@@ -97,12 +113,11 @@ module ShopifyClient
         if changes_made
           customer_obj.tags = my_tags.join(",")
           customer_obj.save!
-          cust_tag.tags = my_tags.join(",")
+          tag_tbl_cust.tags = my_tags.join(",")
           @logger.info "changes made, tags after: #{customer_obj.tags.inspect}"
-
-          cust_tag.is_processed = true
-          cust_tag.save!
-          @logger.info "#{shopify_id} is_processed value now = #{cust_tag.is_processed}"
+          tag_tbl_cust.is_processed = true
+          tag_tbl_cust.save!
+          @logger.info "#{shopify_id} is_processed value now = #{tag_tbl_cust.is_processed}"
         else
           @logger.error "No changes made, #{option} tag not found in: #{customer_obj.tags.inspect}"
         end
