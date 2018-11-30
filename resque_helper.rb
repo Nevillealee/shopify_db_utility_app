@@ -184,4 +184,46 @@ module ResqueHelper
     my_conn.close
 
   end
+
+
+  def background_remove_tags(params)
+    Resque.logger.info "tag to be removed from customers in shopify_customer_tag_fixes table: #{params["mytag"]}"
+    tag_fixes = ShopifyCustomerTagFix.where(is_processed: false)
+
+    tag_fixes.each do |tag_tbl_cust|
+      shopify_id = tag_tbl_cust.customer_id
+      ShopifyAPI::Base.site = params["base"]
+      Resque.logger.info "Handling shopify_customer_id: #{shopify_id}"
+      begin
+        customer_obj = ShopifyAPI::Customer.find(shopify_id)
+      rescue StandardError => e
+        Resque.logger.error "#{e.inspect}"
+        next
+      end
+      my_tags = customer_obj.tags.split(",")
+      my_tags.map! {|x| x.strip}
+      Resque.logger.info "tags before: #{customer_obj.tags.inspect}"
+      changes_made = false
+
+      my_tags.each do |x|
+        if x.include?(params["mytag"].to_s)
+          my_tags.delete(x)
+          changes_made = true
+        end
+      end
+
+      if changes_made
+        customer_obj.tags = my_tags.join(",")
+        # save customer_obj from shopify api
+        customer_obj.save!
+        tag_tbl_cust.tags = my_tags.join(",")
+        Resque.logger.info "changes made, tags after: #{customer_obj.tags.inspect}"
+        tag_tbl_cust.is_processed = true
+        tag_tbl_cust.save!
+        Resque.logger.info "#{shopify_id} is_processed value now = #{tag_tbl_cust.is_processed}"
+      else
+        Resque.logger.error "No changes made, #{params["mytag"]} tag not found in: #{customer_obj.tags.inspect}"
+      end
+    end
+  end
 end
