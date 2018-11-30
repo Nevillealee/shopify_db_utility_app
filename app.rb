@@ -97,7 +97,6 @@ module ShopifyClient
           @logger.error "#{e.inspect}"
           next
         end
-
         my_tags = customer_obj.tags.split(",")
         my_tags.map! {|x| x.strip}
         @logger.info "tags before: #{customer_obj.tags.inspect}"
@@ -112,6 +111,7 @@ module ShopifyClient
 
         if changes_made
           customer_obj.tags = my_tags.join(",")
+          # save customer_obj from shopify api
           customer_obj.save!
           tag_tbl_cust.tags = my_tags.join(",")
           @logger.info "changes made, tags after: #{customer_obj.tags.inspect}"
