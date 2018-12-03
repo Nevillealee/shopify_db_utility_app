@@ -64,7 +64,12 @@ module ResqueHelper
     return my_count
   end
 
-  def background_load_full_shopify_customers(sleep_shopify, num_customers, shopify_header, uri)
+  def background_load_full_shopify_customers(
+    sleep_shopify,
+    num_customers,
+    shopify_header,
+    uri
+  )
     Resque.logger.info "starting download"
     myuri = URI.parse(uri)
     my_conn =  PG.connect(myuri.hostname, myuri.port, nil, nil, myuri.path[1..-1], myuri.user, myuri.password)
@@ -75,7 +80,20 @@ module ResqueHelper
     start = Time.now
     page_size = 250
     num_pages = (num_customers/page_size.to_f).ceil
+    cycle = 0.5
+
     1.upto(num_pages) do |page|
+      unless page == 1
+        stop_time = Time.now
+        Resque.logger.info "Last batch processing started at #{start.strftime('%T.%L')}"
+        Resque.logger.info "The time is now #{stop_time.strftime('%T.%L')}"
+        processing_duration = stop_time - start
+        Resque.logger.info "The processing lasted #{processing_duration.to_i} seconds."
+        wait_time = (cycle - processing_duration).ceil
+        Resque.logger.info "We have to wait #{wait_time} seconds then we will resume."
+        sleep wait_time if wait_time > 0
+        start = Time.now
+      end
       customers = HTTParty.get(shopify_header + "/customers.json?limit=250&page=#{page}")
 
       my_customers = customers.parsed_response['customers']
@@ -105,17 +123,17 @@ module ResqueHelper
 
       end
       Resque.logger.info "Done with page #{page}/#{num_pages}"
-      current = Time.now
-      duration = (current - start).ceil
-      Resque.logger.info "Running #{duration} seconds"
-      Resque.logger.info "Sleeping #{sleep_shopify}"
-      sleep sleep_shopify.to_i
     end
     Resque.logger.info "All done"
     my_conn.close
   end
 
-  def background_load_modified_shopify_customers(sleep_shopify, num_customers, shopify_header, uri)
+  def background_load_modified_shopify_customers(
+    sleep_shopify,
+    num_customers,
+    shopify_header,
+    uri
+  )
     Resque.logger.info "Doing partial download new or modified customers since yesterday"
     myuri = URI.parse(uri)
     my_conn =  PG.connect(myuri.hostname, myuri.port, nil, nil, myuri.path[1..-1], myuri.user, myuri.password)
@@ -129,7 +147,21 @@ module ResqueHelper
     start = Time.now
     page_size = 250
     num_pages = (num_customers/page_size.to_f).ceil
+    # 2 calls/second (avg) allowed  on shopify
+    cycle = 0.5
+
     1.upto(num_pages) do |page|
+      unless page == 1
+        stop_time = Time.now
+        Resque.logger.info "Last batch processing started at #{start.strftime('%T.%L')}"
+        Resque.logger.info "The time is now #{stop_time.strftime('%T.%L')}"
+        processing_duration = stop_time - start
+        Resque.logger.info "The processing lasted #{processing_duration.to_i} seconds."
+        wait_time = (cycle - processing_duration).ceil
+        Resque.logger.info "We have to wait #{wait_time} seconds then we will resume."
+        sleep wait_time if wait_time > 0
+        start = Time.now
+      end
       customers = HTTParty.get(shopify_header + "/customers.json?limit=250&page=#{page}")
       my_customers = customers.parsed_response['customers']
       my_customers.each do |mycust|
@@ -174,25 +206,33 @@ module ResqueHelper
 
       end
       Resque.logger.info "Done with page #{page}/#{num_pages}"
-      current = Time.now
-      duration = (current - start).ceil
-      Resque.logger.info "Running #{duration} seconds"
-      Resque.logger.info "Sleeping #{sleep_shopify}"
-      sleep sleep_shopify.to_i
     end
     Resque.logger.info "All done"
     my_conn.close
 
   end
 
-
   def background_remove_tags(params)
     Resque.logger.info "tag to be removed from customers in shopify_customer_tag_fixes table: #{params["mytag"]}"
     tag_fixes = ShopifyCustomerTagFix.where(is_processed: false)
+    ShopifyAPI::Base.site = params["base"]
+    start = Time.now
+    cycle = 0.5
 
     tag_fixes.each do |tag_tbl_cust|
+    # --start throttle method--
+      stop_time = Time.now
+      Resque.logger.info "Last batch processing started at #{start.strftime('%T.%L')}"
+      Resque.logger.info "The time is now #{stop_time.strftime('%T.%L')}"
+      processing_duration = stop_time - start
+      Resque.logger.info "The processing lasted #{processing_duration.to_i} seconds."
+      wait_time = (cycle - processing_duration).ceil
+      Resque.logger.info "We have to wait #{wait_time} seconds then we will resume."
+      sleep wait_time if wait_time > 0
+      start = Time.now
+    # --end throttle method--
+
       shopify_id = tag_tbl_cust.customer_id
-      ShopifyAPI::Base.site = params["base"]
       Resque.logger.info "Handling shopify_customer_id: #{shopify_id}"
       begin
         customer_obj = ShopifyAPI::Customer.find(shopify_id)
@@ -223,6 +263,8 @@ module ResqueHelper
         Resque.logger.info "#{shopify_id} is_processed value now = #{tag_tbl_cust.is_processed}"
       else
         Resque.logger.error "No changes made, #{params["mytag"]} tag not found in: #{customer_obj.tags.inspect}"
+        tag_tbl_cust.is_processed = true
+        tag_tbl_cust.save!
       end
     end
   end
