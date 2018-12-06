@@ -8,12 +8,10 @@ require "sinatra/activerecord"
 require_relative 'resque_helper'
 Dir["./models/*.rb"].each {|file| require file }
 require 'pry'
-# TODO(Neville Lee) add api limit rescue statements
 module ShopifyClient
   class Customer
     def initialize
-      # TODO(Neville) change STDOUT to 'logs/customer_pull_resque.log' for production
-      @logger = Logger.new(STDOUT, progname: 'ShopifyClient', level: 'INFO')
+      @logger = Logger.new('logs/customer_pull_resque.log', progname: 'ShopifyClient', level: 'INFO')
       key = ENV['SHOPIFY_API_KEY']
       pswd = ENV['SHOPIFY_API_PW']
       shopname = ENV['SHOP_NAME']
@@ -98,7 +96,7 @@ module ShopifyClient
     @queue = :shopify_customer
     extend ResqueHelper
     def self.perform(params)
-      Resque.logger = Logger.new(STDOUT,  10, 1024000)
+      Resque.logger = Logger.new('logs/customer_pull_resque.log',  10, 1024000)
       Resque.logger.info "Job CustomerWorker started"
       Resque.logger.debug "CustomerWorker#perform params: #{params.inspect}"
       get_shopify_customers_full(params)
@@ -109,7 +107,7 @@ module ShopifyClient
     @queue = :tag_removal
     extend ResqueHelper
     def self.perform(params)
-      Resque.logger = Logger.new(STDOUT,  10, 1024000)
+      Resque.logger = Logger.new('logs/customer_pull_resque.log',  10, 1024000)
       Resque.logger.info "Job UntagWorker started"
       Resque.logger.debug "UntagWorker#perform params: #{params.inspect}"
       background_remove_tags(params)

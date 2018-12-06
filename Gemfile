@@ -6,6 +6,7 @@ ruby "2.5.0"
 gem 'httparty'
 gem 'dotenv'
 gem "resque"
+gem "resque-web"
 gem 'activerecord'
 gem 'sinatra'
 gem "sinatra-activerecord"

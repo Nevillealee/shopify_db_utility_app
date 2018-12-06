@@ -1,4 +1,5 @@
 require 'dotenv'
+Dotenv.load
 require 'active_support/core_ext'
 require 'sinatra/activerecord'
 require 'httparty'
@@ -6,11 +7,9 @@ require 'shopify_api'
 Dir["/models/*.rb"].each {|file| require file }
 require 'pry'
 require 'logger'
-Dotenv.load
 
 module ResqueHelper
-  # TODO(Neville) change STDOUT to 'logs/resque_helper.log' for production
-  Resque.logger = Logger.new(STDOUT, progname: 'ResqueHelper', level: 'INFO')
+  Resque.logger = Logger.new('logs/resque_helper.log', progname: 'ResqueHelper', level: 'INFO')
 
   def get_shopify_customers_full(params)
     Resque.logger.debug "ResqueHelper#get_shopify_customers_full params: #{params}"
