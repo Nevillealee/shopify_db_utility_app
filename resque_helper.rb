@@ -215,26 +215,16 @@ module ResqueHelper
     Resque.logger.info "tag to be removed from customers in shopify_customer_tag_fixes table: #{params["mytag"]}"
     tag_fixes = ShopifyCustomerTagFix.where(is_processed: false)
     ShopifyAPI::Base.site = params["base"]
-    start = Time.now
-    cycle = 0.5
+    my_now = Time.now
 
     tag_fixes.each do |tag_tbl_cust|
-    # --start throttle method--
-      stop_time = Time.now
-      Resque.logger.info "Last batch processing started at #{start.strftime('%T.%L')}"
-      Resque.logger.info "The time is now #{stop_time.strftime('%T.%L')}"
-      processing_duration = stop_time - start
-      Resque.logger.info "The processing lasted #{processing_duration.to_i} seconds."
-      wait_time = (cycle - processing_duration).ceil
-      Resque.logger.info "We have to wait #{wait_time} seconds then we will resume."
-      sleep wait_time if wait_time > 0
-      start = Time.now
-    # --end throttle method--
+    
 
       shopify_id = tag_tbl_cust.customer_id
       Resque.logger.info "Handling shopify_customer_id: #{shopify_id}"
       begin
         customer_obj = ShopifyAPI::Customer.find(shopify_id)
+        api_limiter
       rescue StandardError => e
         Resque.logger.error "#{e.inspect}"
         next
@@ -255,6 +245,7 @@ module ResqueHelper
         customer_obj.tags = my_tags.join(",")
         # save customer_obj from shopify api
         customer_obj.save!
+        api_limiter
         tag_tbl_cust.tags = my_tags.join(",")
         Resque.logger.info "changes made, tags after: #{customer_obj.tags.inspect}"
         tag_tbl_cust.is_processed = true
@@ -266,5 +257,39 @@ module ResqueHelper
         tag_tbl_cust.save!
       end
     end
+
+    my_current = Time.now
+    duration = (my_current - my_now).ceil
+    puts "Been running #{duration} seconds"
+    Resque.logger.info "Been running #{duration} seconds"
+
+    if duration > 480
+      Resque.logger.info "Been running more than 8 minutes must exit"
+      exit
+    end
+
+
   end
+
+
+
+  private
+
+  def api_limiter
+    credit_used = ShopifyAPI.credit_used
+    credit_limit = ShopifyAPI.credit_limit
+    credit_left = ShopifyAPI.credit_left
+    puts "credit used: #{credit_used} credit_left: #{credit_left}"
+    if credit_used/credit_limit.to_f > 0.65
+      Resque.logger.info "We have #{credit_left}"\
+      "/#{credit_limit} credits left, sleeping 10.."
+      sleep 10
+    end
+  end
+
+
+
+
+
+
 end
