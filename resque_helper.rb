@@ -18,7 +18,11 @@ module ResqueHelper
     sleep_shopify = params['sleep_shopify']
     shopify_header = params['shopify_base']
     myuri = URI.parse(uri)
-    my_conn =  PG.connect(myuri.hostname, myuri.port, nil, nil, myuri.path[1..-1], myuri.user, myuri.password)
+    my_conn =  PG.connect(
+      myuri.hostname, myuri.port,
+      nil, nil, myuri.path[1..-1],
+      myuri.user, myuri.password
+    )
 
     if option_value == "full_pull"
       #delete all shopify_customer_tables
@@ -32,7 +36,6 @@ module ResqueHelper
       num_customers = background_count_shopify_customers(shopify_header)
       Resque.logger.info "We have #{num_customers} customers to download"
       background_load_full_shopify_customers(sleep_shopify, num_customers, shopify_header, uri)
-
     elsif option_value == "yesterday"
       Resque.logger.info "downloading only yesterday's shopify customers"
       my_today = Date.today
@@ -41,7 +44,6 @@ module ResqueHelper
       num_updated_cust = background_count_yesterday_shopify_customers(my_yesterday, shopify_header)
       Resque.logger.info "We have #{num_updated_cust} shopify customers who are new or have been updated since yesterday"
       background_load_modified_shopify_customers(sleep_shopify, num_updated_cust, shopify_header, uri)
-
     else
       Resque.logger.error "Sorry can't understand what the option_value #{option_value} means"
     end
@@ -76,25 +78,13 @@ module ResqueHelper
 
     my_conn.prepare('statement1', "#{my_insert}")
 
-    start = Time.now
     page_size = 250
     num_pages = (num_customers/page_size.to_f).ceil
-    cycle = 0.5
+    ShopifyAPI::Base.site = shopify_header
 
     1.upto(num_pages) do |page|
-      unless page == 1
-        stop_time = Time.now
-        Resque.logger.info "Last batch processing started at #{start.strftime('%T.%L')}"
-        Resque.logger.info "The time is now #{stop_time.strftime('%T.%L')}"
-        processing_duration = stop_time - start
-        Resque.logger.info "The processing lasted #{processing_duration.to_i} seconds."
-        wait_time = (cycle - processing_duration).ceil
-        Resque.logger.info "We have to wait #{wait_time} seconds then we will resume."
-        sleep wait_time if wait_time > 0
-        start = Time.now
-      end
+      api_limiter
       customers = HTTParty.get(shopify_header + "/customers.json?limit=250&page=#{page}")
-
       my_customers = customers.parsed_response['customers']
       my_customers.each do |mycust|
         customer_id = mycust['id']
@@ -133,35 +123,39 @@ module ResqueHelper
     shopify_header,
     uri
   )
-    Resque.logger.info "Doing partial download new or modified customers since yesterday"
+    Resque.logger.info "Downloading new/modified customers since yesterday"
     myuri = URI.parse(uri)
-    my_conn =  PG.connect(myuri.hostname, myuri.port, nil, nil, myuri.path[1..-1], myuri.user, myuri.password)
-    my_insert = "insert into shopify_customers (accepts_marketing, addresses, created_at, default_address, email, first_name, customer_id, last_name, last_order_id, last_order_name, metafield, multipass_identifier, note, orders_count, phone, state, tags, tax_exempt, total_spent, updated_at, verified_email) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)"
+    my_conn =  PG.connect(
+      myuri.hostname, myuri.port, nil, nil,
+      myuri.path[1..-1], myuri.user, myuri.password
+    )
+    my_insert = "insert into shopify_customers (accepts_marketing, addresses, "\
+    "created_at, default_address, email, first_name, customer_id, last_name,"\
+    " last_order_id, last_order_name, metafield, multipass_identifier, note,"\
+    " orders_count, phone, state, tags, tax_exempt, total_spent, updated_at, "\
+    "verified_email) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, "\
+    "$12, $13, $14, $15, $16, $17, $18, $19, $20, $21)"
+
     my_conn.prepare('statement1', "#{my_insert}")
 
-    my_temp_update = "update shopify_customers set accepts_marketing = $1, addresses = $2, created_at = $3, default_address = $4, email = $5, first_name = $6, customer_id = $7, last_name = $8, last_order_id = $9, last_order_name = $10, metafield = $11, multipass_identifier = $12, note = $13, orders_count = $14, phone = $15, state = $16, tags = $17, tax_exempt = $18, total_spent = $19, updated_at = $20, verified_email = $21  where customer_id = $7"
+    my_temp_update = "update shopify_customers set accepts_marketing = $1, "\
+    "addresses = $2, created_at = $3, default_address = $4, email = $5,"\
+    " first_name = $6, customer_id = $7, last_name = $8, last_order_id = $9,"\
+    " last_order_name = $10, metafield = $11, multipass_identifier = $12,"\
+    " note = $13, orders_count = $14, phone = $15, state = $16, tags = $17,"\
+    " tax_exempt = $18, total_spent = $19, updated_at = $20, "\
+    "verified_email = $21  where customer_id = $7"
+
     my_conn.prepare('statement2', "#{my_temp_update}")
 
-
-    start = Time.now
     page_size = 250
     num_pages = (num_customers/page_size.to_f).ceil
-    # 2 calls/second (avg) allowed  on shopify
-    cycle = 0.5
 
     1.upto(num_pages) do |page|
-      unless page == 1
-        stop_time = Time.now
-        Resque.logger.info "Last batch processing started at #{start.strftime('%T.%L')}"
-        Resque.logger.info "The time is now #{stop_time.strftime('%T.%L')}"
-        processing_duration = stop_time - start
-        Resque.logger.info "The processing lasted #{processing_duration.to_i} seconds."
-        wait_time = (cycle - processing_duration).ceil
-        Resque.logger.info "We have to wait #{wait_time} seconds then we will resume."
-        sleep wait_time if wait_time > 0
-        start = Time.now
-      end
-      customers = HTTParty.get(shopify_header + "/customers.json?limit=250&page=#{page}")
+      api_limiter
+      customers = HTTParty.get(
+        shopify_header + "/customers.json?limit=250&page=#{page}"
+      )
       my_customers = customers.parsed_response['customers']
       my_customers.each do |mycust|
         customer_id = mycust['id']
@@ -185,52 +179,53 @@ module ResqueHelper
         total_spent = mycust['total_spent']
         updated_at = mycust['updated_at']
         verified_email = mycust['verified_email']
-        my_ind_select = "select * from shopify_customers where customer_id = \'#{customer_id}\'"
+        my_ind_select = "select * from shopify_customers "\
+        "where customer_id = \'#{customer_id}\'"
         temp_result = my_conn.exec(my_ind_select)
         if !temp_result.num_tuples.zero?
           Resque.logger.info "Found existing record"
           temp_result.each do |myrow|
             customer_id = myrow['customer_id']
             Resque.logger.info "Customer ID #{customer_id}"
-            indy_result = my_conn.exec_prepared('statement2', [accepts_marketing, addresses, created_at, default_address, email, first_name, customer_id, last_name, last_order_id, last_order_name, metafield, multipass_identifier, note, orders_count, phone, state, tags, tax_exempt, total_spent, updated_at, verified_email])
+            indy_result = my_conn.exec_prepared(
+              'statement2', [accepts_marketing, addresses, created_at,
+                default_address, email, first_name, customer_id, last_name,
+                last_order_id, last_order_name, metafield, multipass_identifier,
+                note, orders_count, phone, state, tags, tax_exempt, total_spent,
+                updated_at, verified_email]
+              )
             Resque.logger.debug indy_result.inspect
           end
         else
           Resque.logger.info "Need to insert a new record"
           Resque.logger.info "inserting #{customer_id}, #{first_name} #{last_name}"
-          ins_result = my_conn.exec_prepared('statement1', [accepts_marketing, addresses, created_at, default_address, email, first_name, customer_id, last_name, last_order_id, last_order_name, metafield, multipass_identifier, note, orders_count, phone, state, tags, tax_exempt, total_spent, updated_at, verified_email])
+          ins_result = my_conn.exec_prepared(
+            'statement1', [accepts_marketing, addresses, created_at,
+              default_address, email, first_name, customer_id, last_name,
+              last_order_id, last_order_name, metafield, multipass_identifier,
+              note, orders_count, phone, state, tags, tax_exempt, total_spent,
+              updated_at, verified_email]
+            )
           Resque.logger.debug ins_result.inspect
           sleep 4
         end
-
       end
       Resque.logger.info "Done with page #{page}/#{num_pages}"
     end
     Resque.logger.info "All done"
     my_conn.close
-
   end
 
   def background_remove_tags(params)
-    Resque.logger.info "tag to be removed from customers in shopify_customer_tag_fixes table: #{params["mytag"]}"
+    Resque.logger.info "tag to be removed from customers in "\
+    "shopify_customer_tag_fixes table: #{params['mytag']}"
+
     tag_fixes = ShopifyCustomerTagFix.where(is_processed: false)
     ShopifyAPI::Base.site = params["base"]
-    start = Time.now
-    cycle = 0.5
 
     tag_fixes.each do |tag_tbl_cust|
-    # --start throttle method--
-      stop_time = Time.now
-      Resque.logger.info "Last batch processing started at #{start.strftime('%T.%L')}"
-      Resque.logger.info "The time is now #{stop_time.strftime('%T.%L')}"
-      processing_duration = stop_time - start
-      Resque.logger.info "The processing lasted #{processing_duration.to_i} seconds."
-      wait_time = (cycle - processing_duration).ceil
-      Resque.logger.info "We have to wait #{wait_time} seconds then we will resume."
-      sleep wait_time if wait_time > 0
-      start = Time.now
-    # --end throttle method--
-
+      shopify_id = tag_tbl_cust.customer_id
+      api_limiter
       shopify_id = tag_tbl_cust.customer_id
       Resque.logger.info "Handling shopify_customer_id: #{shopify_id}"
       begin
@@ -243,7 +238,6 @@ module ResqueHelper
       my_tags.map! {|x| x.strip}
       Resque.logger.info "tags before: #{customer_obj.tags.inspect}"
       changes_made = false
-
       my_tags.each do |x|
         if x.include?(params["mytag"].to_s)
           my_tags.delete(x)
@@ -255,8 +249,8 @@ module ResqueHelper
         customer_obj.tags = my_tags.join(",")
         # save customer_obj from shopify api
         customer_obj.save!
-        tag_tbl_cust.tags = my_tags.join(",")
         Resque.logger.info "changes made, tags after: #{customer_obj.tags.inspect}"
+        tag_tbl_cust.tags = my_tags.join(",")
         tag_tbl_cust.is_processed = true
         tag_tbl_cust.save!
         Resque.logger.info "#{shopify_id} is_processed value now = #{tag_tbl_cust.is_processed}"
@@ -267,4 +261,20 @@ module ResqueHelper
       end
     end
   end
+
+  private
+
+  def api_limiter
+    credit_used = ShopifyAPI.credit_used
+    credit_limit = ShopifyAPI.credit_limit
+    credit_left = ShopifyAPI.credit_left
+    puts "credit used: #{credit_used} credit_left: #{credit_left}"
+    if credit_used/credit_limit.to_f > 0.65
+      Resque.logger.info "We have #{credit_left}"\
+      "/#{credit_limit} credits left, sleeping 10.."
+      sleep 10
+    end
+  end
+
+
 end
