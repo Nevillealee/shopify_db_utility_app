@@ -342,7 +342,10 @@ module ResqueHelper
   def valid_tags?(tags_array)
     tags = tags_array
     response = true
-    if tags.include?("Inactive Subscriber") &&
+    if (tags.include?("Inactive Subscriber") ||
+      tags.include?("Subscription card declined") ||
+      tags.include?("cancelled")
+    )
       (tags.include?("prospect") || tags.include?("recurring_subscription"))
       response = false
     end
