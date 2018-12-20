@@ -263,7 +263,9 @@ module ResqueHelper
     Resque.logger.info "tag to be removed from customers in "\
     "shopify_customer_tag_fixes table: #{params['mytag']}"
 
-    tag_fixes = ShopifyCustomerTagFix.where(is_processed: false)
+    tag_fixes = ShopifyCustomerTagFix.where(
+      "tags LIKE ? and is_processed = ?", "%#{params['my_tag']}%", "false"
+    )
     ShopifyAPI::Base.site = params["base"]
     my_now = Time.now
 
@@ -297,7 +299,7 @@ module ResqueHelper
         Resque.logger.info "changes made, tags "\
         "after: #{customer_obj.tags.inspect}"
         tag_tbl_cust.tags = my_tags.join(",")
-        tag_tbl_cust.is_processed = true
+        tag_tbl_cust.is_processed = true if valid_tags? my_tags
         tag_tbl_cust.save!
         Resque.logger.info "#{shopify_id} is_processed"\
         " value now = #{tag_tbl_cust.is_processed}"\
@@ -337,5 +339,14 @@ module ResqueHelper
 
   end
 
+  def valid_tags?(tags_array)
+    tags = tags_array
+    response = true
+    if tags.include?("Inactive Subscriber") &&
+      (tags.include?("prospect") || tags.include?("recurring_subscription"))
+      response = false
+    end
+    return response
+  end
 
 end

@@ -56,7 +56,13 @@ module ShopifyClient
         @cust_tags = ShopifyCustomer.find_by_sql(
           "select * from shopify_customers where tags like
           '%skipped%';"
-          );
+          )
+      elsif option == 'inactive'
+        @cust_tags = ShopifyCustomer.find_by_sql(
+          "select * from shopify_customers where tags like
+          '%Inactive Subscriber%' and tags like '%prospect%'
+          and tags like '%recurring_subscription%'"
+        )
       else
         raises ArgumentError
       end
@@ -68,14 +74,14 @@ module ShopifyClient
         @logger.info "#{bad_tags.size} incorrectly tagged customers found in db"
         bad_tags.each do |query_cust|
           myid = query_cust.customer_id
-      ShopifyCustomerTagFix.find_or_create_by(customer_id: myid)
-      .update_attributes({
-            email: query_cust.email,
-            first_name: query_cust.first_name,
-            last_name: query_cust.last_name,
-            tags: query_cust.tags,
-            is_processed: false,
-          })
+          ShopifyCustomerTagFix.find_or_create_by(customer_id: myid)
+          .update_attributes({
+                email: query_cust.email,
+                first_name: query_cust.first_name,
+                last_name: query_cust.last_name,
+                tags: query_cust.tags,
+                is_processed: false,
+              })
           @logger.info "shopify_id: #{myid} processed"
         end
       end
@@ -87,7 +93,7 @@ module ShopifyClient
         "base": @shopify_base_site,
         "sleep": @sleep_shopify
       }
-      @logger.info "Starting #{params["mytag"]}tag removal background job.."
+      @logger.info "Starting #{params["mytag"]} tag removal background job.."
       Resque.enqueue(UntagWorker, params)
     end
   end
