@@ -57,11 +57,14 @@ module ShopifyClient
           "select * from shopify_customers where tags like
           '%skipped%';"
           )
+          #TODO(Neville) add new or select statements from Floyd slack with cancelled added
       elsif option == 'inactive'
         @cust_tags = ShopifyCustomer.find_by_sql(
-          "select * from shopify_customers where tags like
-          '%Inactive Subscriber%' and tags like '%prospect%'
-          and tags like '%recurring_subscription%'"
+          "select * from shopify_customers where (tags ilike
+          '%Inactive Subscriber%' and tags ilike '%prospect%') or
+          (tags ilike '%recurring_subscription%' and tags ilike '%prospect%')
+          or (tags ilike '%Subscription%card declined%' and tags ilike '%prospect%') or
+          (tags ilike '%cancelled%' and tags ilike '%prospect%')"
         )
       else
         raises ArgumentError
