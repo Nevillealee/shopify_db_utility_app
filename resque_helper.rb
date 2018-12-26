@@ -6,6 +6,7 @@ require 'httparty'
 require 'shopify_api'
 Dir["/models/*.rb"].each {|file| require file }
 require 'pry'
+require 'resque'
 require 'logger'
 
 module ResqueHelper
@@ -304,7 +305,7 @@ module ResqueHelper
         Resque.logger.info "#{shopify_id} is_processed"\
         " value now = #{tag_tbl_cust.is_processed}"\
       else
-        Resque.logger.error "No changes made, #{params["mytag"]} tag"\
+        Resque.logger.info "No changes made, #{params["mytag"]} tag"\
         " not found in: #{customer_obj.tags.inspect}"
         tag_tbl_cust.is_processed = true
         tag_tbl_cust.save!
@@ -342,11 +343,13 @@ module ResqueHelper
   def valid_tags?(tags_array)
     tags = tags_array
     response = true
-    if (tags.include?("Inactive Subscriber") ||
-      tags.include?("Subscription card declined") ||
-      tags.include?("cancelled")
-    )
-      (tags.include?("prospect") || tags.include?("recurring_subscription"))
+    if tags.include?("prospect") &&
+      ( tags.include?("Subscription card declined") ||
+        tags.include?("cancelled") ||
+        tags.include?("Invalid Subscriber") ||
+        tags.include?("recurring_subscription")
+      ) || (tags.include?("Inactive Subscriber") &&
+            tags.include?("recurring_subscription"))
       response = false
     end
     return response
