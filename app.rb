@@ -57,12 +57,13 @@ module ShopifyClient
           "select * from shopify_customers where tags like
           '%skipped%';"
           )
-          #TODO(Neville) add new or select statements from Floyd slack with cancelled added
+      # TODO(Neville): check if Inactive Subscriber + recurring_subscription
+      # tags need to be added
       elsif option == 'inactive'
         @cust_tags = ShopifyCustomer.find_by_sql(
           "select * from shopify_customers where (tags ilike
           '%Inactive Subscriber%' and tags ilike '%prospect%') or
-          (tags ilike '%recurring_subscription%' and tags ilike '%prospect%')
+          (tags ilike '%recurring_subscription%' and tags ilike '%Inactive Subscriber%')
           or (tags ilike '%Subscription%card declined%' and tags ilike '%prospect%') or
           (tags ilike '%cancelled%' and tags ilike '%prospect%')"
         )
