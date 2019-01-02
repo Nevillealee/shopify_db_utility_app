@@ -44,9 +44,9 @@ module ShopifyClient
     end
 
     def init_tag_tbl(option)
-      # option = skip_set or prospect_recurring
       @logger.info "Doing shopify customer tag table setup"
       @logger.info "option recieved: #{option.inspect}"
+
       if option == 'prospect_recurring'
         @cust_tags = ShopifyCustomer.find_by_sql(
           "select * from shopify_customers where tags like

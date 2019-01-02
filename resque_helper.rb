@@ -307,7 +307,7 @@ module ResqueHelper
       else
         Resque.logger.info "No changes made, #{params["mytag"]} tag"\
         " not found in: #{customer_obj.tags.inspect}"
-        tag_tbl_cust.is_processed = true
+        # tag_tbl_cust.is_processed = true
         tag_tbl_cust.save!
       end
 
@@ -346,7 +346,7 @@ module ResqueHelper
     if tags.include?("prospect") &&
       ( tags.include?("Subscription card declined") ||
         tags.include?("cancelled") ||
-        tags.include?("Invalid Subscriber") ||
+        tags.include?("Inactive Subscriber") ||
         tags.include?("recurring_subscription")
       ) || (tags.include?("Inactive Subscriber") &&
             tags.include?("recurring_subscription"))
