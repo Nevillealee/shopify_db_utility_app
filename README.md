@@ -37,6 +37,13 @@ SHOP_NAME="[name of your shopify store without '.myshopify.com' suffix]"
 SHOPIFY_SLEEP_TIME=[number of seconds to wait when api limit reached]
 REDIS_URL="[redis://[:PASSWORD@]HOST[:PORT]]"
 ```
+Logging
+
+```
+Change Logger output to STDOUT when working in development
+and back to "logs/*.log" when in production for both [resque_helper.rb] and [app.rb] files
+```
+
 Set up database
 
 ```
@@ -52,8 +59,8 @@ Start redis server manually if redis not already installed/running as daemon
 in another terminal tab
 
 ```
-$ redis-server path/to/redis.conf 
-  
+$ redis-server path/to/redis.conf
+
   (macOS default_path: /usr/local/etc/redis.conf)
   (linux default_path: /etc/redis.conf)
 ```
