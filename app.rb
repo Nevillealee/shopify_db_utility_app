@@ -11,7 +11,7 @@ require 'pry'
 module ShopifyClient
   class Customer
     def initialize
-      @logger = Logger.new('logs/customer_pull_resque.log', progname: 'ShopifyClient', level: 'INFO')
+      @logger = Logger.new(STDOUT, progname: 'ShopifyClient', level: 'INFO')
       key = ENV['SHOPIFY_API_KEY']
       pswd = ENV['SHOPIFY_API_PW']
       shopname = ENV['SHOP_NAME']

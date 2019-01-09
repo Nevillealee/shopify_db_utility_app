@@ -11,7 +11,7 @@ require 'logger'
 
 module ResqueHelper
   Resque.logger = Logger.new(
-    'logs/resque_helper.log',
+    STDOUT,
     progname: 'ResqueHelper',
     level: 'INFO'
   )
@@ -307,7 +307,7 @@ module ResqueHelper
       else
         Resque.logger.info "No changes made, #{params["mytag"]} tag"\
         " not found in: #{customer_obj.tags.inspect}"
-        # tag_tbl_cust.is_processed = true
+        tag_tbl_cust.is_processed = true
         tag_tbl_cust.save!
       end
 
@@ -342,12 +342,14 @@ module ResqueHelper
 
   def valid_tags?(tags_array)
     tags = tags_array
+    reccurring_not_active = (tags.include?("recurring_subscription") && tags.exclude?("Active Subscriber"))
     response = true
+
     if tags.include?("prospect") &&
       ( tags.include?("Subscription card declined") ||
         tags.include?("cancelled") ||
         tags.include?("Inactive Subscriber") ||
-        tags.include?("recurring_subscription")
+        reccurring_not_active
       ) || (tags.include?("Inactive Subscriber") &&
             tags.include?("recurring_subscription"))
       response = false
