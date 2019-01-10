@@ -301,14 +301,15 @@ module ResqueHelper
         "after: #{customer_obj.tags.inspect}"
         tag_tbl_cust.tags = my_tags.join(",")
         tag_tbl_cust.is_processed = true if valid_tags? my_tags
+        Resque.logger.debug "#{my_tags} valid? returns #{valid_tags? my_tags}"
         tag_tbl_cust.save!
         Resque.logger.info "#{shopify_id} is_processed"\
         " value now = #{tag_tbl_cust.is_processed}"\
       else
         Resque.logger.info "No changes made, #{params["mytag"]} tag"\
         " not found in: #{customer_obj.tags.inspect}"
-        tag_tbl_cust.is_processed = true
-        tag_tbl_cust.save!
+        # tag_tbl_cust.is_processed = true
+        # tag_tbl_cust.save!
       end
 
       my_current = Time.now
