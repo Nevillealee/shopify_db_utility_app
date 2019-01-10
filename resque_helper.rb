@@ -262,11 +262,17 @@ module ResqueHelper
 
   def background_remove_tags(params)
     Resque.logger.info "tag to be removed from customers in "\
-    "shopify_customer_tag_fixes table: #{params['mytag']}"
-
-    tag_fixes = ShopifyCustomerTagFix.where(
-      "tags LIKE ? and is_processed = ?", "%#{params['my_tag']}%", "false"
-    )
+    "#{params['table']} table: #{params['mytag']}"
+    
+    if params['table'] == 'prospect'
+      tag_fixes = ProspectTagFix.where(
+        "tags LIKE ? and is_processed = ?", "%#{params['my_tag']}%", "false"
+      )
+    elsif params['table'] == 'recurring'
+      tag_fixes = RecurringTagFix.where(
+        "tags LIKE ? and is_processed = ?", "%#{params['my_tag']}%", "false"
+      )
+    end
     ShopifyAPI::Base.site = params["base"]
     my_now = Time.now
 
@@ -302,14 +308,15 @@ module ResqueHelper
         tag_tbl_cust.tags = my_tags.join(",")
         tag_tbl_cust.is_processed = true if valid_tags? my_tags
         Resque.logger.debug "#{my_tags} valid? returns #{valid_tags? my_tags}"
-        tag_tbl_cust.save!
         Resque.logger.info "#{shopify_id} is_processed"\
-        " value now = #{tag_tbl_cust.is_processed}"\
+        " value now = #{tag_tbl_cust.is_processed}"
+        tag_tbl_cust.save!
       else
         Resque.logger.info "No changes made, #{params["mytag"]} tag"\
         " not found in: #{customer_obj.tags.inspect}"
-        # tag_tbl_cust.is_processed = true
-        # tag_tbl_cust.save!
+        # if tag no longer on shopify, discontinue processing customers tag
+        tag_tbl_cust.is_processed = true
+        tag_tbl_cust.save!
       end
 
       my_current = Time.now

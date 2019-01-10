@@ -20,11 +20,11 @@ namespace :shopify do
     ShopifyClient::Customer.new.init_tag_tbl(*args)
   end
 
-  desc 'Remove [option] tag(s) from customers'
+  desc 'Remove [tag,table_name] table_name= prospect or recurring'
   task :remove_tag do |t, args|
     puts "recieved #{args.extras}"
-    args.extras.each do |params|
-      ShopifyClient::Customer.new.remove_tags(params)
-    end
+    # args.extras.each do |params|
+      ShopifyClient::Customer.new.remove_tags(args.extras)
+    # end
   end
 end

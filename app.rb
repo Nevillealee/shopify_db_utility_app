@@ -11,7 +11,7 @@ require 'pry'
 module ShopifyClient
   class Customer
     def initialize
-      @logger = Logger.new(STDOUT, progname: 'ShopifyClient', level: 'INFO')
+      @logger = Logger.new(STDOUT, progname: 'ShopifyClient')
       key = ENV['SHOPIFY_API_KEY']
       pswd = ENV['SHOPIFY_API_PW']
       shopname = ENV['SHOP_NAME']
@@ -50,15 +50,13 @@ module ShopifyClient
       if option == 'prospect_recurring'
         @cust_tags = ShopifyCustomer.find_by_sql(
           "select * from shopify_customers where tags like
-          '%prospect%' and tags like '%recurring_subscription%';"
+          '%prospect%' and tags like '%recurring_subscription%' and tags not like '%Active Subscriber%';"
           );
       elsif option == 'skip_reset'
         @cust_tags = ShopifyCustomer.find_by_sql(
           "select * from shopify_customers where tags like
           '%skipped%';"
           )
-      # TODO(Neville): check if Inactive Subscriber + recurring_subscription
-      # tags need to be added
       elsif option == 'inactive'
         @cust_tags = ShopifyCustomer.find_by_sql(
           "select * from shopify_customers where (tags ilike
@@ -70,15 +68,23 @@ module ShopifyClient
       else
         raises ArgumentError
       end
-      update_tag_tbl(@cust_tags)
+      update_tag_tbl(@cust_tags, option)
     end
 
-    def update_tag_tbl(bad_tags)
+    def update_tag_tbl(bad_tags, my_opt)
       if (bad_tags.size > 0)
+        # Choose which table to process
+        if my_opt.to_s == ('inactive' || 'skip_reset')
+          my_db_object = ProspectTagFix
+        elsif my_opt.to_s == 'prospect_recurring'
+          my_db_object = RecurringTagFix
+        end
+        @logger.debug "table selected: #{my_db_object}"
         @logger.info "#{bad_tags.size} incorrectly tagged customers found in db"
+
         bad_tags.each do |query_cust|
           myid = query_cust.customer_id
-          ShopifyCustomerTagFix.find_or_create_by(customer_id: myid)
+          my_db_object.find_or_create_by(customer_id: myid)
           .update_attributes({
                 email: query_cust.email,
                 first_name: query_cust.first_name,
@@ -91,9 +97,10 @@ module ShopifyClient
       end
     end
 
-    def remove_tags(option)
+    def remove_tags(opt_array)
       params = {
-        "mytag": option,
+        "mytag": opt_array[0],
+        "table": opt_array[1],
         "base": @shopify_base_site,
         "sleep": @sleep_shopify
       }
@@ -117,7 +124,8 @@ module ShopifyClient
     @queue = :tag_removal
     extend ResqueHelper
     def self.perform(params)
-      Resque.logger = Logger.new('logs/customer_pull_resque.log',  10, 1024000)
+      # Resque.logger = Logger.new('logs/resque_helper.log',  10, 1024000)
+      Resque.logger = Logger.new(STDOUT,  10, 1024000)
       Resque.logger.info "Job UntagWorker started"
       Resque.logger.debug "UntagWorker#perform params: #{params.inspect}"
       background_remove_tags(params)

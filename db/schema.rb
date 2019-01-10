@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2018_11_27_225408) do
+ActiveRecord::Schema.define(version: 2019_01_10_194748) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -358,13 +358,34 @@ ActiveRecord::Schema.define(version: 2018_11_27_225408) do
     t.datetime "updated_at", null: false
   end
 
-  create_table "shopify_customer_tag_fixes", force: :cascade do |t|
+  create_table "prospect_tag_fixes", force: :cascade do |t|
     t.string "customer_id"
     t.string "email"
     t.string "first_name"
     t.string "last_name"
     t.string "tags"
     t.boolean "is_processed", default: false
+  end
+
+  create_table "recurring_tag_fixes", force: :cascade do |t|
+    t.string "customer_id"
+    t.string "email"
+    t.string "first_name"
+    t.string "last_name"
+    t.string "tags"
+    t.boolean "is_processed", default: false
+  end
+
+  create_table "reports", force: :cascade do |t|
+    t.string "first_name"
+    t.string "last_name"
+    t.string "email"
+    t.string "shopify_customer_id"
+    t.string "missing_sports_jacket"
+    t.string "missing_legging"
+    t.string "missing_sports_bra"
+    t.datetime "next_charge_scheduled_at"
+    t.string "subscription_id"
   end
 
   create_table "shopify_customers", force: :cascade do |t|
@@ -470,7 +491,7 @@ ActiveRecord::Schema.define(version: 2018_11_27_225408) do
     t.index ["subscription_id"], name: "index_skip_reasons_on_subscription_id"
   end
 
-  create_table "switchable_products", force: :cascade do |t|
+  create_table "skippable_products", force: :cascade do |t|
     t.string "product_title"
     t.string "product_id"
     t.boolean "threepk", default: false
@@ -544,6 +565,13 @@ ActiveRecord::Schema.define(version: 2018_11_27_225408) do
     t.jsonb "raw_line_items"
     t.index ["customer_id"], name: "index_subscriptions_updated_on_customer_id"
     t.index ["subscription_id"], name: "index_subscriptions_updated_on_subscription_id"
+  end
+
+  create_table "switchable_products", force: :cascade do |t|
+    t.string "product_title"
+    t.string "product_id"
+    t.boolean "threepk", default: false
+    t.index ["product_id"], name: "index_switchable_products_on_product_id"
   end
 
   create_table "update_line_items", force: :cascade do |t|
