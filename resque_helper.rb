@@ -10,11 +10,7 @@ require 'resque'
 require 'logger'
 
 module ResqueHelper
-  Resque.logger = Logger.new(
-    "logs/resque_helper.log",
-    progname: 'ResqueHelper',
-    10, 1024000
-  )
+  Resque.logger = Logger.new("logs/resque_helper.log", 10, 1024000)
 
   def get_shopify_customers_full(params)
     Resque.logger.debug "ResqueHelper#get_shopify_customers_full params: #{params}"
