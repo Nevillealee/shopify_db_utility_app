@@ -11,9 +11,9 @@ require 'logger'
 
 module ResqueHelper
   Resque.logger = Logger.new(
-    STDOUT,
+    "logs/resque_helper.log",
     progname: 'ResqueHelper',
-    level: 'INFO'
+    10, 1024000
   )
 
   def get_shopify_customers_full(params)
@@ -71,7 +71,6 @@ module ResqueHelper
   end
 
   def background_count_shopify_customers(shopify_header)
-    #GET /customers/count
     ShopifyAPI::Base.site = shopify_header
     my_count = ShopifyAPI::Customer.count
     Resque.logger.debug "ResqueHelper#background_count_shopify_customers #{my_count}"
@@ -263,7 +262,7 @@ module ResqueHelper
   def background_remove_tags(params)
     Resque.logger.info "tag to be removed from customers in "\
     "#{params['table']} table: #{params['mytag']}"
-    
+
     if params['table'] == 'prospect'
       tag_fixes = ProspectTagFix.where(
         "tags LIKE ? and is_processed = ?", "%#{params['my_tag']}%", "false"

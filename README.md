@@ -72,7 +72,7 @@ $ rake shopify:customer_pull[full_pull]
 
 ## Built With
 
-* [sinatra](http://sinatrarb.com/) - The web framework used (kinda)
+* [sinatra](http://sinatrarb.com/) - The web framework used
 * [bundler](https://bundler.io/) - Dependency Management
 * [rvm](https://rvm.io/) - Package Management
 
