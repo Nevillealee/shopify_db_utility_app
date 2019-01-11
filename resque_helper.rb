@@ -11,9 +11,8 @@ require 'logger'
 
 module ResqueHelper
   Resque.logger = Logger.new(
-    STDOUT,
-    progname: 'ResqueHelper',
-    level: 'INFO'
+    'logs/resque_helper.log',
+    progname: 'ResqueHelper'
   )
 
   def get_shopify_customers_full(params)
@@ -263,7 +262,7 @@ module ResqueHelper
   def background_remove_tags(params)
     Resque.logger.info "tag to be removed from customers in "\
     "#{params['table']} table: #{params['mytag']}"
-    
+
     if params['table'] == 'prospect'
       tag_fixes = ProspectTagFix.where(
         "tags LIKE ? and is_processed = ?", "%#{params['my_tag']}%", "false"

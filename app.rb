@@ -11,7 +11,7 @@ require 'pry'
 module ShopifyClient
   class Customer
     def initialize
-      @logger = Logger.new(STDOUT, progname: 'ShopifyClient')
+      @logger = Logger.new('logs/customer_pull_resque.log', progname: 'ShopifyClient')
       key = ENV['SHOPIFY_API_KEY']
       pswd = ENV['SHOPIFY_API_PW']
       shopname = ENV['SHOP_NAME']
@@ -113,7 +113,7 @@ module ShopifyClient
     @queue = :shopify_customer
     extend ResqueHelper
     def self.perform(params)
-      Resque.logger = Logger.new('logs/customer_pull_resque.log',  10, 1024000)
+      Resque.logger = Logger.new('logs/customer_pull_resque.log')
       Resque.logger.info "Job CustomerWorker started"
       Resque.logger.debug "CustomerWorker#perform params: #{params.inspect}"
       get_shopify_customers_full(params)
@@ -124,8 +124,8 @@ module ShopifyClient
     @queue = :tag_removal
     extend ResqueHelper
     def self.perform(params)
-      # Resque.logger = Logger.new('logs/resque_helper.log',  10, 1024000)
-      Resque.logger = Logger.new(STDOUT,  10, 1024000)
+      Resque.logger = Logger.new('logs/resque_helper.log')
+      # Resque.logger = Logger.new(STDOUT,  10, 1024000)
       Resque.logger.info "Job UntagWorker started"
       Resque.logger.debug "UntagWorker#perform params: #{params.inspect}"
       background_remove_tags(params)
