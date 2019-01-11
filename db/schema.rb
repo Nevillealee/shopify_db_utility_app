@@ -175,6 +175,7 @@ ActiveRecord::Schema.define(version: 2019_01_10_194748) do
     t.string "processor_type"
     t.string "status"
     t.datetime "synced_at"
+    t.index ["customer_id"], name: "cust_constraint", unique: true
     t.index ["customer_id"], name: "index_customers_on_customer_id"
     t.index ["shopify_customer_id"], name: "index_customers_on_shopify_customer_id"
   end
@@ -252,6 +253,7 @@ ActiveRecord::Schema.define(version: 2019_01_10_194748) do
     t.string "company"
     t.string "phone"
     t.index ["order_id"], name: "index_order_billing_address_on_order_id"
+    t.index ["order_id"], name: "ord_bill", unique: true
   end
 
   create_table "order_line_items_fixed", force: :cascade do |t|
@@ -264,6 +266,7 @@ ActiveRecord::Schema.define(version: 2019_01_10_194748) do
     t.string "shopify_product_id"
     t.string "product_title"
     t.index ["order_id"], name: "index_order_line_items_fixed_on_order_id"
+    t.index ["order_id"], name: "ord_fixed", unique: true
     t.index ["subscription_id"], name: "index_order_line_items_fixed_on_subscription_id"
   end
 
@@ -287,6 +290,7 @@ ActiveRecord::Schema.define(version: 2019_01_10_194748) do
     t.string "company"
     t.string "phone"
     t.index ["order_id"], name: "index_order_shipping_address_on_order_id"
+    t.index ["order_id"], name: "ord_ship", unique: true
   end
 
   create_table "orders", force: :cascade do |t|
@@ -323,6 +327,7 @@ ActiveRecord::Schema.define(version: 2019_01_10_194748) do
     t.index ["charge_id"], name: "index_orders_on_charge_id"
     t.index ["customer_id"], name: "index_orders_on_customer_id"
     t.index ["order_id"], name: "index_orders_on_order_id"
+    t.index ["order_id"], name: "ord_id", unique: true
     t.index ["shopify_id"], name: "index_orders_on_shopify_id"
     t.index ["shopify_order_id"], name: "index_orders_on_shopify_order_id"
     t.index ["shopify_order_number"], name: "index_orders_on_shopify_order_number"
@@ -376,18 +381,6 @@ ActiveRecord::Schema.define(version: 2019_01_10_194748) do
     t.boolean "is_processed", default: false
   end
 
-  create_table "reports", force: :cascade do |t|
-    t.string "first_name"
-    t.string "last_name"
-    t.string "email"
-    t.string "shopify_customer_id"
-    t.string "missing_sports_jacket"
-    t.string "missing_legging"
-    t.string "missing_sports_bra"
-    t.datetime "next_charge_scheduled_at"
-    t.string "subscription_id"
-  end
-
   create_table "shopify_customers", force: :cascade do |t|
     t.boolean "accepts_marketing"
     t.jsonb "addresses"
@@ -410,69 +403,6 @@ ActiveRecord::Schema.define(version: 2019_01_10_194748) do
     t.string "total_spent"
     t.datetime "updated_at"
     t.boolean "verified_email"
-  end
-
-  create_table "shopify_orders", id: :bigint, default: nil, force: :cascade do |t|
-    t.bigint "app_id"
-    t.json "billing_address"
-    t.string "browser_ip"
-    t.boolean "buyer_accepts_marketing"
-    t.datetime "cancelled_at"
-    t.string "cancel_reason"
-    t.string "cart_token"
-    t.bigint "checkout_id"
-    t.string "checkout_token"
-    t.datetime "closed_at"
-    t.boolean "confirmed"
-    t.string "contact_email"
-    t.datetime "created_at"
-    t.float "currency"
-    t.json "customer"
-    t.string "customer_locale"
-    t.bigint "device_id"
-    t.json "discount_codes"
-    t.string "email"
-    t.string "financial_status"
-    t.json "fulfillments"
-    t.string "fulfillment_status"
-    t.string "gateway"
-    t.string "landing_site"
-    t.string "landing_site_ref"
-    t.json "line_items"
-    t.bigint "location_id"
-    t.string "name"
-    t.text "note"
-    t.json "note_attributes"
-    t.integer "number"
-    t.integer "order_number"
-    t.string "order_status_url"
-    t.json "payment_gateway_names"
-    t.string "phone"
-    t.datetime "processed_at"
-    t.string "processing_method"
-    t.string "reference"
-    t.string "referring_site"
-    t.json "refunds"
-    t.json "shipping_address"
-    t.json "shipping_lines"
-    t.string "source_identifier"
-    t.string "source_name"
-    t.string "source_url"
-    t.float "subtotal_price"
-    t.string "tags"
-    t.boolean "taxes_included"
-    t.json "tax_lines"
-    t.boolean "test"
-    t.string "token"
-    t.float "total_discounts"
-    t.float "total_line_items_price"
-    t.float "total_price"
-    t.float "total_price_usd"
-    t.float "total_tax"
-    t.integer "total_weight"
-    t.datetime "updated_at"
-    t.bigint "user_id"
-    t.datetime "sent_to_acs_at"
   end
 
   create_table "skip_reasons", force: :cascade do |t|
