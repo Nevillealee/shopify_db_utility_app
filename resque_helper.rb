@@ -11,6 +11,7 @@ require 'logger'
 
 module ResqueHelper
   Resque.logger = Logger.new("logs/resque_helper.log", 10, 1024000)
+  Resque.logger.level = Logger::INFO
 
   def get_shopify_customers_full(params)
     Resque.logger.debug "ResqueHelper#get_shopify_customers_full params: #{params}"
@@ -116,7 +117,7 @@ module ResqueHelper
         HTTParty.get(shopify_header + "/customers.json?limit=250&page=#{page}")
       my_customers = customers.parsed_response['customers']
 
-      my_customers.each do |mycust|
+      my_customers.try(:each) do |mycust|
         customer_id = mycust['id']
         accepts_marketing = mycust['accepts_marketing']
         addresses = mycust['addresses']
@@ -260,18 +261,18 @@ module ResqueHelper
     "#{params['table']} table: #{params['mytag']}"
 
     if params['table'] == 'prospect'
-      tag_fixes = ProspectTagFix.where(
-        "tags LIKE ? and is_processed = ?", "%#{params['my_tag']}%", "false"
+      @tag_fixes = ProspectTagFix.where(
+        "tags ilike '%#{params['mytag']}%' and is_processed = ?", "f"
       )
     elsif params['table'] == 'recurring'
-      tag_fixes = RecurringTagFix.where(
-        "tags LIKE ? and is_processed = ?", "%#{params['my_tag']}%", "false"
+      @tag_fixes = RecurringTagFix.where(
+        "tags ilike '%#{params['mytag']}%' and is_processed = ?", "f"
       )
     end
     ShopifyAPI::Base.site = params["base"]
     my_now = Time.now
-
-    tag_fixes.each do |tag_tbl_cust|
+    Resque.logger.info "tags to fix: #{@tag_fixes.size}"
+    @tag_fixes.each do |tag_tbl_cust|
       shopify_id = tag_tbl_cust.customer_id
       api_limiter
       shopify_id = tag_tbl_cust.customer_id
