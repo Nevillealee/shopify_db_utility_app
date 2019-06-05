@@ -1,6 +1,6 @@
 # shopify_db_utility_app
 A standalone utility app made for api/database synchronization to preserve production server resources
-by delegating low level tasks to an aux server based app.
+by delegating asynchronous tasks to an EC2 server based app.
 
 ### Prerequisites
 
@@ -52,8 +52,8 @@ Start redis server manually if redis not already installed/running as daemon
 in another terminal tab
 
 ```
-$ redis-server path/to/redis.conf 
-  
+$ redis-server path/to/redis.conf
+
   (macOS default_path: /usr/local/etc/redis.conf)
   (linux default_path: /etc/redis.conf)
 ```
