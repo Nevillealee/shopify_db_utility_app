@@ -27,4 +27,9 @@ namespace :shopify do
       ShopifyClient::Customer.new.remove_tags(args.extras)
     # end
   end
+
+  desc 'Fixes false recurring_subscription tagged customers'
+  task :fix_recurring do |t, args|
+    ShopifyClient::Customer.new.remove_false_recurring
+  end
 end

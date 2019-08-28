@@ -1,6 +1,5 @@
 require 'dotenv'
 Dotenv.load
-require 'active_support/core_ext'
 require 'sinatra/activerecord'
 require 'httparty'
 require 'shopify_api'
@@ -269,20 +268,23 @@ module ResqueHelper
         "tags ilike '%#{params['mytag']}%' and is_processed = ?", "f"
       )
     end
+
     ShopifyAPI::Base.site = params["base"]
     my_now = Time.now
     Resque.logger.info "tags to fix: #{@tag_fixes.size}"
+
     @tag_fixes.each do |tag_tbl_cust|
       shopify_id = tag_tbl_cust.customer_id
       api_limiter
-      shopify_id = tag_tbl_cust.customer_id
       Resque.logger.info "Handling shopify_customer_id: #{shopify_id}"
+      # retrieve shopify customer from DB
       begin
         customer_obj = ShopifyAPI::Customer.find(shopify_id)
       rescue StandardError => e
         Resque.logger.error "#{e.inspect}"
         next
       end
+      # convert shopify customer tags in array of strings
       my_tags = customer_obj.tags.split(",")
       my_tags.map! {|x| x.strip}
       Resque.logger.info "tags before: #{customer_obj.tags.inspect}"
@@ -295,12 +297,14 @@ module ResqueHelper
         end
       end
 
+
+      # update shopify customer tags locally
       if changes_made
         customer_obj.tags = my_tags.join(",")
         # save customer_obj from shopify api
         customer_obj.save!
-        Resque.logger.info "changes made, tags "\
-        "after: #{customer_obj.tags.inspect}"
+        Resque.logger.info "changes made, tags after: #{customer_obj.tags.inspect}"
+        # save new tags into prospect_tag_fixes or recurring_tag_fixes table/ is_processed: f -> t
         tag_tbl_cust.tags = my_tags.join(",")
         tag_tbl_cust.is_processed = true if valid_tags? my_tags
         Resque.logger.debug "#{my_tags} valid? returns #{valid_tags? my_tags}"
@@ -324,7 +328,6 @@ module ResqueHelper
         Resque.logger.info "Been running more than 8 minutes, must exit"
         exit
       end
-
     end
   end
 
